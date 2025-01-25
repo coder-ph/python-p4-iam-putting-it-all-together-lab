@@ -36,7 +36,7 @@ with app.app_context():
             image_url=fake.url(),
         )
 
-        user.password_hash = user.username + 'password'
+        user.password_hash = f'username_password'
 
         users.append(user)
 
@@ -50,7 +50,7 @@ with app.app_context():
         recipe = Recipe(
             title=fake.sentence(),
             instructions=instructions,
-            minutes_to_complete=randint(15,90),
+            minutes_to_complete=randint(15,90)
         )
 
         recipe.user = rc(users)
