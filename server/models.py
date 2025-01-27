@@ -17,7 +17,6 @@ class User(db.Model, SerializerMixin):
     
     recipes = db.relationship('Recipe', back_populates='user', cascade='all, delete-orphan')
     
-    
     @hybrid_property
     def password_hash(self):
         
@@ -34,20 +33,20 @@ class User(db.Model, SerializerMixin):
             self._password_hash, password.encode('utf-8')
         )
         
-    # @validates('username')
-    # def validate_username(self, key, value):
-    #     if not value:
-    #         raise ValueError ('Missing username field')
-    #     username = User.query.filter(User.username== value).first()
-    #     if username:
-    #         return ValueError('This username exist!')
-    #     return value
+    @validates('username')
+    def validate_username(self, key, value):
+        if not value:
+            raise ValueError('Missing username field')
+        username = User.query.filter(User.username == value).first()
+        if username:
+            raise ValueError('This username exists!')
+        return value
     
-    # @validates('_password_hash')
-    # def validate_password(self, key, value):
-    #     if not value:
-    #         raise ValueError('password cannot be empty')
-    #     return value
+    @validates('_password_hash')
+    def validate_password(self, key, value):
+        if not value:
+            raise ValueError('password cannot be empty')
+        return value
     
     def __repr__(self):
         return f'<User: {self.username}, {self.bio}>'

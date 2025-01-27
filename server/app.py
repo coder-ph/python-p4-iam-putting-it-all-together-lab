@@ -12,63 +12,62 @@ class Signup(Resource):
         data = request.get_json()
         if not data:
             return {'message': 'Invalid payload'}, 400
-        
+
         username = data.get('username')
-        password = data.get('_password_hash')
+        password = data.get('password')
         image_url = data.get('image_url')
         bio = data.get('bio')
-        
+
         if not username or not password:
             return {'message': 'username and password required'}, 422
-        
+
         if User.query.filter(User.username == username).first():
-            return {'message': 'username already exist'}, 400
-        
+            return {'message': 'username already exists'}, 400
+
         new_user = User(username=username, image_url=image_url, bio=bio)
-        new_user.password_hash = password
-        
+        new_user.password_hash(password)  
+
         try:
             db.session.add(new_user)
             db.session.commit()
             session['user_id'] = new_user.id
             return new_user.to_dict(), 201
-        
-        except IntegrityError:
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Error: {str(e)}'}, 500
 
-            return {'error': '422 Unprocessable Entity'}, 422
 
 class CheckSession(Resource):
+    
     def get(self):
-        
-        user_id = session['user_id']
-        if user_id:
-            user = User.query.filter(User.id == user_id).first()
+        user_id = session.get('user_id')  # Correct session handling
+        if not user_id:
+            return {}, 401
+
+        user = User.query.filter_by(id=user_id).first()
+        if user:
             return user.to_dict(), 200
-        
-        return {}, 401
+
+        return {'message': 'User not found'}, 404
 
 class Login(Resource):
     def post(self):
         data = request.get_json()
-        if not data:
-            return {'message': 'Invalid payload'}, 400
-        
+        if not data or 'username' not in data or 'password' not in data:
+            return {'message': 'Username and password required'}, 400
+
         username = data.get('username')
-        password = data.get('_password_hash')
-        
-        if not username or not password:
-            return {'message': 'password and username required'}, 400
-        
-        user = User.query.filter(User.username == username).first()
-            
-        
-        if user and user.authenticate(password):
-            session['user_id']= user.id
-            return user.to_dict(), 200
-        
-        else:
-            return {'message': "Invalid username or password"}, 401
-        
+        password = data.get('password')
+
+        user = User.query.filter_by(username=username).first()
+
+        if not user or not user.authenticate(password):
+            return {'message': 'Invalid username or password'}, 401
+
+        session['user_id'] = user.id
+        return user.to_dict(), 200
+
+
         
             
 class Logout(Resource):
@@ -81,15 +80,20 @@ class Logout(Resource):
 
 class RecipeIndex(Resource):
     def get(self):
-        # Check if the user is logged in
         user_id = session.get('user_id')
         if not user_id:
-            return {'message': "401: Not authorized"}, 401
-        recipes = Recipe.query.filter_by(user_id=user_id).all()
-        if not recipes:
-            return {'message': 'No recipes found'}, 404
-        recipe_list = [recipe.to_dict() for recipe in recipes]
-        return recipe_list, 200  
+            return {'message': 'Not authorized'}, 401
+
+        try:
+            recipes = Recipe.query.filter_by(user_id=user_id).all()
+            if not recipes:
+                return {'message': 'No recipes found'}, 404
+
+            recipe_list = [recipe.to_dict() for recipe in recipes]
+            return recipe_list, 200
+        except Exception as e:
+            return {'message': f'Error: {str(e)}'}, 500
+
         
     def post(self):
         user_id = session.get('user_id')
