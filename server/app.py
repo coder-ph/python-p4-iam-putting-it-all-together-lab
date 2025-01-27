@@ -2,7 +2,7 @@
 
 from flask import request, session, make_response, jsonify
 from flask_restful import Resource
-from sqlalchemy.exc import IntegrityError
+
 
 from config import app, db, api
 from models import User, Recipe
@@ -14,7 +14,7 @@ class Signup(Resource):
             return {'message': 'Invalid payload'}, 400
         
         username = data.get('username')
-        password = data.get('password')
+        password = data.get('_password_hash')
         image_url = data.get('image_url')
         bio = data.get('bio')
         
@@ -32,20 +32,20 @@ class Signup(Resource):
             db.session.commit()
             session['user_id'] = new_user.id
             return new_user.to_dict(), 201
-        except Exception as e:
-            db.session.rollback()
-            return {'message': f'Error{str(e)}'}, 500
+        
+        except IntegrityError:
+
+            return {'error': '422 Unprocessable Entity'}, 422
 
 class CheckSession(Resource):
     def get(self):
-        user_id = session.get('user_id')
-        if not user_id:
-            return {'message':"401: Not authorized"}, 401
         
-        user = User.query.get(user_id)
-        if not user:
-            return {'message': 'user not found'}, 404
-        return user.to_dict(), 200
+        user_id = session['user_id']
+        if user_id:
+            user = User.query.filter(User.id == user_id).first()
+            return user.to_dict(), 200
+        
+        return {}, 401
 
 class Login(Resource):
     def post(self):
@@ -54,18 +54,22 @@ class Login(Resource):
             return {'message': 'Invalid payload'}, 400
         
         username = data.get('username')
-        password = data.get('password')
+        password = data.get('_password_hash')
         
         if not username or not password:
             return {'message': 'password and username required'}, 400
         
         user = User.query.filter(User.username == username).first()
+            
         
-        if not user or not user.authenticate(password):
+        if user and user.authenticate(password):
+            session['user_id']= user.id
+            return user.to_dict(), 200
+        
+        else:
             return {'message': "Invalid username or password"}, 401
         
-        session['user_id']= user.id
-        return user.to_dict(), 200
+        
             
 class Logout(Resource):
     def delete(self):

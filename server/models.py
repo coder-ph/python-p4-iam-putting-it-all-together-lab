@@ -8,8 +8,8 @@ class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String)
-    _password_hash = db.Column(db.String, nullable=False)
+    username = db.Column(db.String, nullable=False, unique = True)
+    _password_hash = db.Column(db.String)
     image_url = db.Column(db.String)
     bio = db.Column(db.String)
     # created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -23,7 +23,6 @@ class User(db.Model, SerializerMixin):
         
         raise AttributeError ("password in not readable")
         
-    
     @password_hash.setter
     def password_hash(self, password):
         
@@ -35,20 +34,20 @@ class User(db.Model, SerializerMixin):
             self._password_hash, password.encode('utf-8')
         )
         
-    @validates('username')
-    def validate_username(self, key, value):
-        if not value:
-            raise ValueError ('Missing username field')
-        username = User.query.filter(User.username== value).first()
-        if username:
-            return ValueError('This username exist!')
-        return value
+    # @validates('username')
+    # def validate_username(self, key, value):
+    #     if not value:
+    #         raise ValueError ('Missing username field')
+    #     username = User.query.filter(User.username== value).first()
+    #     if username:
+    #         return ValueError('This username exist!')
+    #     return value
     
-    @validates('_password_hash')
-    def validate_password(self, key, value):
-        if not value:
-            raise ValueError('password cannot be empty')
-        return value
+    # @validates('_password_hash')
+    # def validate_password(self, key, value):
+    #     if not value:
+    #         raise ValueError('password cannot be empty')
+    #     return value
     
     def __repr__(self):
         return f'<User: {self.username}, {self.bio}>'
